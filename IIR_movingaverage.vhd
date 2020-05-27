@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity FIR is 
+entity IIR is 
     Generic (
         --TO_WEIGHT   : positive      := 32;
         TO_EXTEND   : positive      := 5; --2**TO_EXTEND = TO_WEIGHT
@@ -18,18 +18,18 @@ entity FIR is
         Data_in     : in    signed(8*WORD_BYTES-1 downto 0);
         Data_out    : out   signed(8*WORD_BYTES-1 downto 0)
     );
-end FIR;
+end IIR;
 
-architecture Behavioral of FIR is 
+architecture Behavioral of IIR is 
 
-    --We need to declare two constant cause init_sum and init_fir are of different "dimensions" 
-    constant init_fir : signed(8*WORD_BYTES-1 downto 0)             := to_signed(INIT,Data_in'HIGH);
+    --We need to declare two constant cause init_sum and init_iir are of different "dimensions" 
+    constant init_iir : signed(8*WORD_BYTES-1 downto 0)             := to_signed(INIT,Data_in'HIGH);
     constant init_sum : signed(TO_EXTEND+8*WORD_BYTES-1 downto 0)   := to_signed((2**TO_EXTEND)*INIT,TO_EXTEND+Data_in'HIGH);
 
     --Type declaration
     type shiftreg is array (0 to 2**TO_EXTEND-1) of signed(8*WORD_BYTES-1 downto 0);
     --"Type" instatiation
-    signal shift_reg0 : shiftreg := (others => init_fir);
+    signal shift_reg0 : shiftreg := (others => init_iir);
 
     signal sum        : signed(TO_EXTEND+8*WORD_BYTES-1 downto 0)   := init_sum;
 
@@ -39,8 +39,8 @@ begin
 
     begin
         if reset = '1' then
-            --(2**TO_EXTEND * init_fir ) = init_sum
-            shift_reg0  <= (others => init_fir);
+            --(2**TO_EXTEND * init_iir ) = init_sum
+            shift_reg0  <= (others => init_iir);
             sum         <= init_sum;
        
         elsif rising_edge(clk) then

@@ -2,15 +2,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity top is 
+entity AXI4_interface_FSM is 
     Generic(
-        FIR_MEAN        : positive         := 5;
-        WORD_BYTES      : positive         := 2;
-        FIR_INIT_VAL    : integer          := 0;
+        IIR_MEAN        : positive         := 5;  --2**IIR_MEAN = number of elements to weight
+        WORD_BYTES      : positive         := 2;  --Length in bytes of the words in input
+        IIR_INIT_VAL    : integer          := 0   --Initial Value of the filter, just if for some reason we do not want to begin with 0.
     );
     Port(
         aclk            : in std_logic;
-        aclk2           : in std_logic;  --half of the speed for the FIR
         resetn          : in std_logic;
 
         --AXI4-S Interface pins
@@ -24,13 +23,13 @@ entity top is
         m_axis_tvalid   : out std_logic;
         m_axis_tready   : in  std_logic;
         m_axis_tdata    : out std_logic_vector(8*WORD_BYTES-1 downto 0);
-        m_axis_tlast    : out std_logic;
+        m_axis_tlast    : out std_logic
     );
-end top;
+end AXI4_interface_FSM;
 
-architecture Behavioral of top is 
+architecture Behavioral of AXI4_interface_FSM is 
    
-    component FIR is 
+    component IIR is 
         Generic (
             TO_EXTEND   : positive      := 5; 
             WORD_BYTES  : positive      := 2;
@@ -47,7 +46,8 @@ architecture Behavioral of top is
         );
     end component;
 
-    type FSM_STATE is (IDLE, READING, WAIT_FIR, SENDING) ;
+    --Defining the fsm states needed in order to have a good behavior for this module.
+    type FSM_STATE is (IDLE, READING, WAIT_IIR, SENDING) ;
     signal STATUS : FSM_STATE := IDLE;
 
     signal Data_in_SX : std_logic_vector(8*WORD_BYTES-1 downto 0);
@@ -55,63 +55,70 @@ architecture Behavioral of top is
     
     --signal count        : positive := 0; --range 0 to 4 := 0;
     
-    signal chip_en_SX   : std_logic := 0;
-    signal chip_en_DX   : std_logic := 0;
+    signal chip_en_SX   : std_logic := '0';
+    signal chip_en_DX   : std_logic := '0';
 
-    signal SX_FIR_Dout  : std_logic_vector(8*WORD_BYTES-1 downto 0);
-    signal DX_FIR_Dout  : std_logic_vector(8*WORD_BYTES-1 downto 0);
+    signal SX_IIR_Dout  : std_logic_vector(8*WORD_BYTES-1 downto 0);
+    signal DX_IIR_Dout  : std_logic_vector(8*WORD_BYTES-1 downto 0);
 
-    signal path_cntrl   : std_logic_vector;
+    --  "Flow control signals"
+    signal path_cntrl               : std_logic;
+    signal m_axis_tlast_sampled     : std_logic;
+
+    signal reset        : std_logic; 
 
 begin
 
-    path_cntrl <= chip_en_SX or chip_en_DX;
+    reset <= not resetn; -- we cannot compute the not resetn during the port map, so we do it here.
 
-    --INSTANTIATE THE FIRST FIR FILTER  (for the first audio channel)
-    FIR_SX_CHANNEL : FIR 
+    --We want path_cntrl not to be in dataflow!
+    --path_cntrl <= chip_en_SX or chip_en_DX;
+
+    --INSTANTIATE THE FIRST IIR FILTER  (for the first audio channel)
+    IIR_SX_CHANNEL : IIR 
     Generic map(
-        TO_EXTEND       => FIR_MEAN,
+        TO_EXTEND       => IIR_MEAN,
         WORD_BYTES      => WORD_BYTES,
-        INIT            => FIR_INIT_VAL
+        INIT            => IIR_INIT_VAL
     )
     Port map(
         clk             => aclk,
-        reset           => not resetn,
+        reset           => reset,
 
         CE              => chip_en_SX,
 
         Data_in         => Data_in_SX,
-        Data_out        => SX_FIR_Dout
+        Data_out        => SX_IIR_Dout
     );
 
-    --INSTANTIATE THE SECOND FIR FILTER  (for the second audio channel)
-    FIR_DX_CHANNEL : FIR 
+    --INSTANTIATE THE SECOND IIR FILTER  (for the second audio channel)
+    IIR_DX_CHANNEL : IIR 
     Generic map(
-        TO_EXTEND       => FIR_MEAN,
+        TO_EXTEND       => IIR_MEAN,
         WORD_BYTES      => WORD_BYTES,
-        INIT            => FIR_INIT_VAL
+        INIT            => IIR_INIT_VAL
     )
     Port map(
         clk             => aclk,
-        reset           => not resetn,
+        reset           => reset,
 
         CE              => chip_en_DX,
 
         Data_in         => Data_in_DX,
-        Data_out        => DX_FIR_Dout
+        Data_out        => DX_IIR_Dout
     );
 
 
-    with STATUS select s_axis_tready =>
+    with STATUS select s_axis_tready <=
         '0' when IDLE,
         '1' when READING,
-        '0' when WAIT_FIR,
+        '0' when WAIT_IIR,
         '0' when SENDING;
 
-    with STATUS select m_axis_tvalid =>
+    with STATUS select m_axis_tvalid <=
         '0' when IDLE,
         '0' when READING,
-        '0' when WAIT_FIR,
+        '0' when WAIT_IIR,
         '1' when SENDING;
 
     FSM_ENGINE : process(aclk)
@@ -119,8 +126,8 @@ begin
     begin
         if resetn = '0' then
             STATUS  <= IDLE;
-            count   <= 0;
-        elsif rising_edge(clk) then 
+            --count   <= 0;
+        elsif rising_edge(aclk) then 
             
             case STATUS is
 
@@ -130,17 +137,15 @@ begin
                 when READING =>
                     if s_axis_tvalid = '1' then
 
-                        --rimarrà m_axis_tlast = s_axis_tlast fino all'handshake, ok!
-                        m_axis_tlast <= s_axis_tlast;
+                        m_axis_tlast_sampled <= s_axis_tlast;
 
-                        --Looking at tlast we choose if the s_axis_tdata should go to the FIR_DX or FIR_SX
-                        
-                        --Done with case select to avoid priority
+                        --Looking at tlast we choose if the s_axis_tdata should go to the IIR_DX or IIR_SX                       
+                        --Done with case-select to avoid priority
 
                         case s_axis_tlast is
                             
                             when '0' =>
-                                Data_in_SX  <= s_axis_tdata;   --in this way, the next cycle the FIR filter will consider the new input as something
+                                Data_in_SX  <= s_axis_tdata;   --in this way, the next cycle the IIR filter will consider the new input as something
                                 chip_en_SX  <= '1';            --to weight and, the cycle after will not.
                             
                             when '1' =>
@@ -156,7 +161,7 @@ begin
                         --Done with if else construct (with priority)
                         
                         -- if s_axis_tlast = '0'
-                        --     Data_in_SX  <= s_axis_tdata;   --in this way, the next cycle the FIR filter will consider the new input as something
+                        --     Data_in_SX  <= s_axis_tdata;   --in this way, the next cycle the IIR filter will consider the new input as something
                         --     chip_en_SX  <= '1';            --to weight and, the cycle after will not.
                         -- elsif s_axis_tlast = '1'
                         --     Data_in_DX  <= s_axis_tdata;   --Same as before for the SX filter.
@@ -165,41 +170,46 @@ begin
                         --     --null;
                         -- end if;
 
-                        STATUS <= WAIT_FIR;
+                        STATUS <= WAIT_IIR;
 
-                    end if;
+                    --end if;
                     else 
                         --nothing, just wait here.
                         --STATUS <= READ
                     end if;
                 
-                --THE FIRS NEED ONE ACLK CYCLE TO PROVIDE THE CORRECT OUTPUT    
-                when WAIT_FIR =>       
+                --THE IIRS NEED TWO ACLK CYCLEs TO PROVIDE THE CORRECT OUTPUT    
+                when WAIT_IIR =>       
                     --Without using 2 differents clocks, and withouth distinguishing between the two cases to use less hardware 
-                    --and reducing the propagation delay
+                    --and in order to reduce the propagation delay of our logic between the flip flops, to have a greater slack in this particular path
+                    --we implemented a "Chip Enable" that tells the iir when to read and compute something.
                     
                     chip_en_SX <= '0';
                     chip_en_DX <= '0';
 
-                    --The first time we are here, path_cntrl will be for sure high, 
+                    path_cntrl <= (chip_en_DX or chip_en_DX);
+
+                    m_axis_tlast <= m_axis_tlast_sampled;  --could we put this under to avoid sampling it every time we are in this state?
+
+                    --The IIRst time we are here, path_cntrl will for sure be high, 
                     --but as we can see here above, the seocond time will be for sure low
                     
-                    if path_cntrl = '1' then
-                        STATUS <= WAIT_FIR;
-                    
-                    elsif path_cntrl = '0' then
+                    if ((chip_en_DX or chip_en_SX) or path_cntrl )= '1' then
+                        STATUS <= WAIT_IIR;
+
+                    elsif (chip_en_DX or chip_en_SX) = '0' then  --to eliminate the check we could just use else and eliminate the else under this elsif, less hardware too and 
                         
-                        --We use the sampled s_axis_tlast, that is our m_axis_tlast, to use the right signal, cause after we exit the CHOOSING state 
+                        --We use the sampled s_axis_tlast, that is our m_axis_tlast_sampled, to use the right signal, cause after we exit the CHOOSING state 
                         --the master of the previous device can change it's outputs and prepare at this device slave interface the next word 
-                        --that will always (except errors) have a different s_axis_tlast.
-                        case m_axis_tlast is
+                        --that will always (except errors) have a different s_axis_tlast. WE NEED THE m_axis_tlast_sampled SINCE m_axis_tlast IS AN OUTPUT PORT, AND WE CANNOT READ AN OUTPUT PORT.
+                        case m_axis_tlast_sampled is
                             
-                            when 0 =>
-                                m_axis_tdata <= SX_FIR_Dout;
+                            when '0' =>
+                                m_axis_tdata <= SX_IIR_Dout;
                                 STATUS <= SENDING;
                             
-                            when 1 =>
-                                m_axis_tdata <= DX_FIR_Dout;
+                            when '1' =>
+                                m_axis_tdata <= DX_IIR_Dout;
                                 STATUS <= SENDING;          
                             
                             when others =>
