@@ -13,50 +13,54 @@ architecture Behavioral of top is
     constant PERIOD     : time := 10ns;
     
     constant IIR_MEAN       : positive := 5;
-    constant WORD_BYTES     : positive := 2;
-    constant IIR_INIT_VAL   : integer := 0;
+    constant WORD_BIT       : positive := 16;
+    constant IIR_INIT_VAL   : integer  := 0;
 
 
     --------------------SIGNALS---------------------
     
-    signal aclk     : std_logic := '1';
-    signal resetn   : std_logic := '0';
+    signal aclk             : std_logic := '1';
+    signal resetn           : std_logic := '0';
+
+    signal enable_filter    : std_logic := '1';
 
     --AXI4-S Interface signals
 
     --SLAVE_interface signals
     signal s_axis_tvalid   : std_logic := '0';
     signal s_axis_tready   : std_logic := '0';
-    signal s_axis_tdata    : std_logic_vector(8*WORD_BYTES-1 downto 0) := "0000000000000000"; -- := x"0000";
+    signal s_axis_tdata    : std_logic_vector(WORD_BIT-1 downto 0) := "0000000000000000"; -- := x"0000";
     signal s_axis_tlast    : std_logic := '0';
             
     --MASTER_interface signals
     signal m_axis_tvalid   : std_logic := '0';
     signal m_axis_tready   : std_logic := '0';
-    signal m_axis_tdata    : std_logic_vector(8*WORD_BYTES-1 downto 0) := "0000000000000000";
+    signal m_axis_tdata    : std_logic_vector(WORD_BIT-1 downto 0) := "0000000000000000";
     signal m_axis_tlast    : std_logic := '0';
 
     component AXI4_S_interface_FSM is 
         Generic(
             IIR_MEAN        : positive         := 5;  --2**IIR_MEAN = number of elements to weight
-            WORD_BYTES      : positive         := 2;  --Length in bytes of the words in input
+            WORD_BIT        : positive         := 16; --Length in bytes of the words in input
             IIR_INIT_VAL    : integer          := 0   --Initial Value of the filter, just if for some reason we do not want to begin with 0.
         );
         Port(
             aclk            : in std_logic;
             resetn          : in std_logic;
     
+            enable_filter   : in std_logic;
+            
             --AXI4-S Interface pins
             --SLAVE_interface
             s_axis_tvalid   : in  std_logic;
             s_axis_tready   : out std_logic;
-            s_axis_tdata    : in  std_logic_vector(8*WORD_BYTES-1 downto 0);
+            s_axis_tdata    : in  std_logic_vector(WORD_BIT-1 downto 0);
             s_axis_tlast    : in  std_logic;
             
             --MASTER_interface
             m_axis_tvalid   : out std_logic;
             m_axis_tready   : in  std_logic;
-            m_axis_tdata    : out std_logic_vector(8*WORD_BYTES-1 downto 0);
+            m_axis_tdata    : out std_logic_vector(WORD_BIT-1 downto 0);
             m_axis_tlast    : out std_logic
         );
     end component;
@@ -73,12 +77,14 @@ begin
         
         generic map(    
             IIR_MEAN        => IIR_MEAN,
-            WORD_BYTES      => WORD_BYTES,
+            WORD_BIT        => WORD_BIT,
             IIR_INIT_VAL    => IIR_INIT_VAL       
         )        
         port map(
             aclk            => aclk,
             resetn          => resetn,
+
+            enable_filter   => enable_filter,
 
             s_axis_tvalid   => s_axis_tvalid,
             s_axis_tready   => s_axis_tready,
@@ -113,13 +119,6 @@ begin
         s_axis_tvalid <= '1';
         wait for 100ns;
 
-        -- for I in 0 to 2**IIR_MEAN loop
-        --     s_axis_tvalid <= not s_axis_tvalid;               --Data incoming (from previous master) is valid
-        --     wait until rising_edge(aclk);
-        --     s_axis_tlast <= not s_axis_tlast;   --Next data will be for the other iir (sx or dx and viceversa)
-        --     wait for 5*PERIOD;
-        -- end loop;
-
         --SX IIR TEST
 
         for I in 0 to 2*2**IIR_MEAN loop
@@ -136,6 +135,24 @@ begin
         
         s_axis_tlast <= not s_axis_tlast;
         wait for 10*PERIOD;
+
+        for I in 0 to 2*2**IIR_MEAN loop
+
+            s_axis_tvalid <= not s_axis_tvalid;
+            wait until rising_edge(aclk);
+            m_axis_tready <= '1';
+            wait until rising_edge(aclk);
+            m_axis_tready <= '0';
+            wait for 4*PERIOD;
+        end loop;
+
+        --Filter not enable, input ot output "directly"
+        enable_filter <= '0';
+        s_axis_tdata  <= x"4321";
+        wait for 100ns;
+        --Try on SX
+        s_axis_tlast <= '0';
+        wait for 5*PERIOD;
 
         for I in 0 to 2*2**IIR_MEAN loop
 
