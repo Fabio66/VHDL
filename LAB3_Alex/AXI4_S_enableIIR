@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity AXI4_interface_FSM is 
+entity AXI4_S_interface_FSM is 
     Generic(
         IIR_MEAN        : positive         := 5;  --2**IIR_MEAN = number of elements to weight
         WORD_BIT        : positive         := 16;  --Length in bit of the words in input
@@ -27,9 +27,9 @@ entity AXI4_interface_FSM is
         m_axis_tdata    : out std_logic_vector(WORD_BIT-1 downto 0);
         m_axis_tlast    : out std_logic
     );
-end AXI4_interface_FSM;
+end AXI4_S_interface_FSM;
 
-architecture Behavioral of AXI4_interface_FSM is 
+architecture Behavioral of AXI4_S_interface_FSM is 
    
     component IIR is 
         Generic (
@@ -136,34 +136,28 @@ begin
                     if s_axis_tvalid = '1' then
 
                         if enable_filter = '1' then
-
                             m_axis_tlast_sampled <= s_axis_tlast;
-                        
-                            --Done with case-select instead of if-else to avoid priority (and so more propagation delay on the cases with less priority)
-
-                            case s_axis_tlast is
-                                
-                                when '0' =>
-                                    Data_in_SX  <= s_axis_tdata;   --in this way, the next cycle the IIR filter will consider the new input as something
-                                    chip_en_SX  <= '1';            --to weight and, the cycle after will not.
-                                
-                                when '1' =>
-                                    Data_in_DX  <= s_axis_tdata;   --Same as before for the SX filter.
-                                    chip_en_DX  <= '1';
-                                
-                                when others =>
-                                    --null ?
-
-                            end case;
-
                             STATUS          <= WAIT_IIR;
-
                         else 
                             m_axis_tlast    <= s_axis_tlast;
                             m_axis_tdata    <= s_axis_tdata;
-                            STATUS          <= SENDING;
-                        
+                            STATUS          <= SENDING;                        
                         end if;
+                        
+                        case s_axis_tlast is                                
+                            when '0' =>
+                                Data_in_SX  <= s_axis_tdata;   --in this way, the next cycle the IIR filter will consider the new input as something
+                                chip_en_SX  <= '1';            --to weight and, the cycle after will not.
+                            
+                            when '1' =>
+                                Data_in_DX  <= s_axis_tdata;   --Same as before for the SX filter.
+                                chip_en_DX  <= '1';
+                            
+                            when others =>
+                                --null ?
+
+                        end case;
+
 
                     else 
                         --STATUS <= READ
@@ -200,6 +194,10 @@ begin
                     end if;
                 
                 when SENDING =>
+
+                    chip_en_SX <= '0';
+                    chip_en_DX <= '0';
+     
                     if m_axis_tready = '1' then 
                         STATUS <= READING;
                     end if;

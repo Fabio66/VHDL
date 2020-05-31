@@ -149,10 +149,10 @@ begin
         --Filter not enable, input ot output "directly"
         enable_filter <= '0';
         s_axis_tdata  <= x"4321";
-        wait for 100ns;
+        wait for 10ns;
         --Try on SX
         s_axis_tlast <= '0';
-        wait for 5*PERIOD;
+        wait for 10ns;
 
         for I in 0 to 2*2**IIR_MEAN loop
 
@@ -162,6 +162,17 @@ begin
             wait until rising_edge(aclk);
             m_axis_tready <= '0';
             wait for 4*PERIOD;
+        end loop;
+        
+        m_axis_tready <= '1';  
+        s_axis_tlast <= '1';
+        wait for 10ns;
+        
+        for I in 0 to 2*2**IIR_MEAN loop
+
+            s_axis_tvalid <= not s_axis_tvalid;
+            wait until rising_edge(aclk);
+            
         end loop;
 
         wait;
