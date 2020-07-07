@@ -23,8 +23,6 @@ entity PWM is
     );
 end PWM;
 
-
-
 architecture Behavioral of PWM is
 
     constant T_ON_INIT_UNS      : unsigned(BIT_LENGTH-1 downto 0)       := to_unsigned(T_ON_INIT-1, BIT_LENGTH);
@@ -34,7 +32,6 @@ architecture Behavioral of PWM is
     signal Period_reg           : unsigned(BIT_LENGTH-1 downto 0)       := PERIOD_INIT_UNS;
     signal count                : unsigned(BIT_LENGTH-1 downto 0)       := (Others => '0');
     signal pwm_reg              : std_logic                             := PWM_INIT;
-
 
 begin
 
@@ -68,11 +65,8 @@ begin
             if Ton_reg > Period_reg then
                 pwm_reg <= PWM_INIT;
             end if;
-        end if;
-        
+        end if;        
     end process PWM_engine;
-
-
 end Behavioral;
 
 -- So, how does this Entity work? -> We have to instantiate a module that provides at his output a single bit pwm.
