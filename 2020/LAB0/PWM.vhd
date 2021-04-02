@@ -7,10 +7,10 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity PWM is 
     Generic(
-        BIT_LENGTH      : integer range 1 to 16 := 8;   -- Bit used inside PWM
-        T_ON_INIT       : positive := 64;               -- Init of Ton
-        PERIOD_INIT     : positive := 128;              -- Init of Period
-        PWM_INIT        : std_logic := '0'high          -- Init of PWM
+        BIT_LENGTH      : integer range 1 to 16 := 8;       -- Bit used inside PWM
+        T_ON_INIT       : positive      := 64;              -- Init of Ton
+        PERIOD_INIT     : positive      := 128;             -- Init of Period
+        PWM_INIT        : std_logic     := '0';             -- Init of PWM
     );
     Port(
         reset           : in    std_logic;
