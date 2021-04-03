@@ -29,7 +29,7 @@ end PWM;
 architecture Behavioral of PWM is 
 
     constant T_ON_INIT_UNS      : unsigned(BIT_LENGTH-1 downto 0)       := to_unsigned(T_ON_INIT-1, BIT_LENGTH);        --this are the two generics that provide the period length and uptime of the pwm
-    constant PERIOD_INIT_UNS    : unsgined(BIT_LENGTH-1 downto 0)       := to_unsigned(PERIOD_INIT-1, BIT_LENGTH);      --converted in unsigneds to be directly used in the architecture
+    constant PERIOD_INIT_UNS    : unsigned(BIT_LENGTH-1 downto 0)       := to_unsigned(PERIOD_INIT-1, BIT_LENGTH);      --converted in unsigneds to be directly used in the architecture
                                                                                                                         --why to_unsigned(T_ON_INIT-1, BIT_LENGTH); ? Cause 0 -> T_ON_INIT-1 => 
                                                                                                                         --exactly T_ON_INIT clock periods "of uptime"
 
