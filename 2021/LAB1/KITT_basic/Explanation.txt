@@ -1,0 +1,65 @@
+We only want to have one led doing the Kitt effect.
+
+We instantiate 2 "constants" :
+
+KITT_CAR_RIGHT
+KITT_CAR_LEFT
+
+respectively
+
+1--------0
+0--------1 
+
+-------- = Number of LED chosen in the GENERIC
+
+This two vectors will rapresent the situation
+of the leds at the two "extreme" cases :
+
+LEFTMOST LED ON - OTHERS OFF
+OTHERS OFF - RIGHTMOST LED ON
+
+We then declare an additive constant 
+
+KITT_CAR_INIT 
+
+equal to KITT_CAR_RIGHT = 1--------0
+that will come in hand when writing the rest 
+part of the code. In this way we can easily
+make the project start from the opposite led
+by just changing this constant to KITT_CAR_LEFT
+More general.
+
+SIGNALS :
+
+kitt_car : std_logic_vector(LEDs'RANGE) := KITT_CAR_INIT;
+
+Just a shift register as long as the LEDs Number
+
+direction : std_logic := '1';
+
+Just to discriminate in which side we have to shift 
+during the clk cycle.
+
+PROCESS
+
+RESET :
+
+Se reset premuto => LED a KITT_CAR_INIT.
+Fine.
+
+ELSIF :
+
+Se direction = 1 allora shift a dx :
+
+kitt_car <= kitt_car(NUM_OF_LEDS-2 downto 0)&'0';
+
+Se direction = '0', allora shift a sx :
+-- Left shift
+elsif direction = '0' then
+	kitt_car	<= "0"&kitt_car(NUM_OF_LEDS-1 downto 1);
+
+IN MY OPINION THEY FUCKED UP THIS BASIC VERSION.
+
+THEY CONFUSED LEFT SHIFT WITH RIGHT SHIFT.
+
+IT DOES NOT COMPILE INDEED.
