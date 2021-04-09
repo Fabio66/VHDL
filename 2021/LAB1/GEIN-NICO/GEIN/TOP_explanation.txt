@@ -1,0 +1,52 @@
+This module is the top entity, the one above all other modules and that links them.
+All generics are here required, component declarations too.
+
+We declare onle 3 constants :
+
+1. PWM_PERIOD that tells us how many clock cycles we have to wait to have the target pwm period in ms
+2. TON_STEP_VALUE that works as minimum Duty Cycle in the specific case for the given tail BIT_LENGTH
+3. NullPeriod, simply to flag when all switches are off
+
+****** type local_mem i do not know
+
+type LED_Ton_array is the array of Ton std_logic_vectors that are necessary to have as many pwm modules 
+as the number of LEDs that have to be driven.
+
+We use two registers (of std_logic_vector) to handle the sliding effect of KITT_CARR :
+LED_Ton_up and LED_Ton_down
+Both of them with a dedicated shift control.
+
+After the begin of the architecture we instantiate the modules, 1 Switch module and 
+16 PWM modules. The switch module simply reads and samples the status of the switches
+of the Basys3 board. 
+The PWM modules are equal in number to the number of LEDs used and everyone of this modules
+has the specific task to produce a PWM for a single LED.
+
+To every PWM module we link the relative Ton std_logic_vector and the assigned LED.
+-(clk and reset as well obv)-
+
+In the process we need a for :
+For every PWM module we need to discriminate whether Register (LED_Ton_down or LED_Ton_up)
+has to be connected and this is the task of the for.
+The highest value in the same position (between for example LED_Ton_down(x) and
+LED_Ton_up(x)) will be fed to the PWM module.
+
+IMPORTANT SIGNALS :
+---------------------------------------------------------------------------------------------------------------------------
+
+LedPeriod is the output of the switch module, tells us how the switch modify the DT between a shift and another of the leds.
+LedPeriodInternal is used to properly count in the top module to wait for the right DT to pass.
+
+LocalCounter is indeed as the name suggests the signal used to wait for the proper number of clk (clk needed to form a DT)
+inside the top module.
+
+****** Should'nt we arrive to count until LedPeriodInternal - 1?  --> Already modified in the TOP_entity.vhd by me.
+---------------------------------------------------------------------------------------------------------------------------
+
+****** COUNTER COMPONENT????? To implement the local couunter, more general design and maybe cleaner code
+
+---------------------------------------------------------------------------------------------------------------------------
+
+unsigned * integer = ?
+
+---------------------------------------------------------------------------------------------------------------------------
