@@ -9,125 +9,106 @@ end tb_kittpwm;
 
 architecture Behavioral of tb_kittpwm is
 
-	constant	CLK_PERIOD 	:	TIME	:= 	10 ns;
-	constant	HUMAN_PERIOD:	TIME	:= 	10 ms;
-	constant	RESET_WND	:	TIME	:= 	10*CLK_PERIOD;
+	constant	CLK_PERIOD		:	TIME	:= 	10 ns;
+	constant	HUMAN_PERIOD	:	TIME	:= 	20 ms;
+	constant	RESET_WND		:	TIME	:= 	100  ns;
+
+	constant 	BIT_LENGTH		:	INTEGER		RANGE	1 TO 32 	:= 32;
+
+	constant 	CLK_PERIOD_NS			:	POSITIVE	RANGE	1 TO 100     	:= 10;		
+	constant 	MIN_KITT_CAR_STEP_MS	:	POSITIVE	RANGE	1 TO 20000   	:= 1;	
 
 	constant 	NUM_OF_SWS  	:   INTEGER := 16;
 	constant 	NUM_OF_LEDS  	:   INTEGER := 16;
-	constant 	TAIL_LENGTH  	:   INTEGER := 8;
+	constant 	TAIL_LENGTH  	:   INTEGER := 4;
 
-	--constant 	NUM_OF_SWS  :   INTEGER := 16; already present for tb
-	constant MIN_KITT_CAR_STEP_MS			:	POSITIVE	RANGE	1	TO	20000   := 1000;	
-	constant DEFAULT_KITT_CAR_STEP_MS		: 	POSITIVE	RANGE	1	TO	2000    := 100;
+	constant 	PWM_FREQUENCY_KHZ		:	POSITIVE 	RANGE	1   TO  100		:= 10;			             
 
-	constant PWM_FREQUENCY_KHZ		    	:	POSITIVE 	RANGE	1   TO  100		:= 10;		
-	constant T_ON_INIT	                	:	INTEGER	        					:= 64;  				        
-	constant PERIOD_INIT	                :	POSITIVE	    					:= 128;				            
-	constant PWM_INIT	                	:	STD_LOGIC       					:= '1';					        
-	constant SR_DEPTH                    	:   INTEGER         					:= 16;    
-
-	component TopEntity is	
-		Generic(
-
-			NUM_OF_SWS					:	INTEGER		RANGE	1   TO  16      := 16;		
-			NUM_OF_LEDS					:	INTEGER		RANGE	1 	TO 	16 		:= 16;		
-			TAIL_LENGTH					:	INTEGER		RANGE	1 	TO 	16		:= 8;		
-		
-			CLK_PERIOD_NS			    :	POSITIVE	RANGE	1	TO	100     := 10;	    
-			MIN_KITT_CAR_STEP_MS		:	POSITIVE	RANGE	1	TO	20000   := 1000;	
-			DEFAULT_KITT_CAR_STEP_MS	: 	POSITIVE	RANGE	1	TO	2000    := 100;
-		
-			PWM_FREQUENCY_KHZ		    :	POSITIVE 	RANGE	1   TO  100		:= 10;		
-			T_ON_INIT	                :	INTEGER	        := 64;  				        
-			PERIOD_INIT	                :	POSITIVE	    := 128;				            
-			PWM_INIT	                :	STD_LOGIC       := '1';					        
-			SR_DEPTH                    :   INTEGER         := 16    
-
-		);
-		Port ( 	
-			clk				: in    std_logic;
-			reset			: in    std_logic;
-
-			sw    			: in     std_logic_vector(NUM_OF_SWS-1 downto 0);
-			leds			: out 	 std_logic_vector(NUM_OF_LEDS-1 downto 0)		
-		);
+	component KITT_CARR_PWM is
+		Generic (
+			BIT_LENGTH				:	INTEGER		RANGE	1 TO 32 		:= 32;
 	
+			CLK_PERIOD_NS			:	POSITIVE	RANGE	1 TO 100     	:= 10;		-- clk period in nanoseconds
+			MIN_KITT_CAR_STEP_MS	:	POSITIVE	RANGE	1 TO 2000    	:= 1;		-- Minimum step period in milliseconds (i.e., value in milliseconds of Delta_t)
+	
+			NUM_OF_SWS				:	INTEGER		RANGE	1 TO 16 		:= 16;		-- Number of input switches
+			NUM_OF_LEDS				:	INTEGER		RANGE	1 TO 16 		:= 16;		-- Number of output LEDs
+			TAIL_LENGTH				:	INTEGER		RANGE	1 TO 16			:= 4;		-- Tail length
+			
+			PWM_FREQUENCY_KHZ		:	POSITIVE 	RANGE	1 TO 100		:= 1		-- PWM frequency in KHz
+		);
+		Port (
+			reset	    :	IN	STD_LOGIC;
+			clk		    :	IN	STD_LOGIC;
+	
+			sw		    :	IN	STD_LOGIC_VECTOR(NUM_OF_SWS-1 downto 0);	-- Switches avaiable on Basys3
+			leds	    :	OUT	STD_LOGIC_VECTOR(NUM_OF_LEDS-1 downto 0)	-- LEDs avaiable on Basys3
+		);
 	end component;
 	
-
-
-	signal sw_int, leds_int 	: std_logic_vector(NUM_OF_SWS - 1 DOWNTO 0):= (others => '0');
-	signal clk_int, reset_int 	: std_logic	:= '0';
+	signal sw				 	: std_logic_vector(NUM_OF_SWS-1 DOWNTO 0)	:= (others => '0');
+	signal leds			 		: std_logic_vector(NUM_OF_LEDS-1 DOWNTO 0)	:= (others => '0');
+	signal clk			 		: std_logic	:= '1';
+	signal reset		 		: std_logic	:= '0';
 	
-
-
-
 
 begin
 
-	TopEntity_inst1 : TopEntity
+	----------CLOCK SQUARE WAVE------------------	
+	clk <= not clk after CLK_PERIOD/2;
+
+	Dut_kit_car_pwm : KITT_CARR_PWM
 		generic map(
+			BIT_LENGTH					=> BIT_LENGTH,
 
-			NUM_OF_SWS					=>NUM_OF_SWS,
-			TAIL_LENGTH					=>TAIL_LENGTH,							
-			NUM_OF_LEDS					=>NUM_OF_LEDS,	
+			CLK_PERIOD_NS			    => CLK_PERIOD_NS,
+			MIN_KITT_CAR_STEP_MS		=> MIN_KITT_CAR_STEP_MS,
 
-			CLK_PERIOD_NS			    =>CLK_PERIOD,
-			MIN_KITT_CAR_STEP_MS		=>MIN_KITT_CAR_STEP_MS,
-			DEFAULT_KITT_CAR_STEP_MS	=>DEFAULT_KITT_CAR_STEP_MS,
+			NUM_OF_SWS					=> NUM_OF_SWS,
+			TAIL_LENGTH					=> TAIL_LENGTH,							
+			NUM_OF_LEDS					=> NUM_OF_LEDS,	
 		 			
-			PWM_FREQUENCY_KHZ		    =>PWM_FREQUENCY_KHZ,		
-			T_ON_INIT	                =>T_ON_INIT,				
-			PERIOD_INIT	                =>PERIOD_INIT,				
-			PWM_INIT	                =>PWM_INIT,					
-			SR_DEPTH                    =>SR_DEPTH	
+			PWM_FREQUENCY_KHZ		    => PWM_FREQUENCY_KHZ	
 		)
 		port map(
-			clk				=>clk_int,
-			reset			=>reset_int,
+			clk				=> clk,
+			reset			=> reset,
 
-			sw    			=>sw_int,
-			leds			=>leds_int
+			sw    			=> sw,
+			leds			=> leds
 		);
-		
-	----------CLOCK SQUARE WAVE------------------	
-	clk_int <= not clk_int after CLK_PERIOD/2;
-
 
 	----- Reset Process --------
 	reset_wave:		process
 		begin
-			reset_int <= '1';
+			reset 	<= '1';
 			wait for RESET_WND;
 			
-			reset_int <= '0';
+			reset 	<= '0';
 			wait;
 		end process;	
 	
-	
-   ------ Stimulus process -------	
+    ------ Stimulus process -------	
 	process
     begin		
-
 		-- waiting the reset wave
-		sw_int	<= std_logic_vector(to_unsigned(0,NUM_OF_SWS));
+		sw	<= std_logic_vector(to_unsigned(0,NUM_OF_SWS));
 		wait for RESET_WND;	
 
-		sw_int	<= x"0001";
+		sw	<= x"0001";
 		wait for 2*HUMAN_PERIOD;
 		
-		sw_int	<= x"0010";
-		wait for HUMAN_PERIOD;
+		sw	<= x"0010";
+		wait for 5*HUMAN_PERIOD;
 		
-		sw_int	<= x"0100";
-		wait for 2*HUMAN_PERIOD;
+		sw	<= x"0100";
+		wait for 20*HUMAN_PERIOD;
 		
-		sw_int	<= x"01f0";
-		wait for HUMAN_PERIOD;
+		sw	<= x"01f0";
+		wait for 40*HUMAN_PERIOD;
 		
-		sw_int	<= x"0ff0";
-		wait for HUMAN_PERIOD;
+		sw	<= x"0ff0";
+		--wait for x*HUMAN_PERIOD;
 
 --		sw_int	<= std_logic_vector(to_unsigned(32000,NUM_OF_SWS));
 -- 		wait for HUMAN_PERIOD;
@@ -135,5 +116,4 @@ begin
 		wait;
 		
     end process;
-
 end Behavioral;

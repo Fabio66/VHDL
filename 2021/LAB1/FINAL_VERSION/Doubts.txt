@@ -1,0 +1,15 @@
+** remember to insert PWM_INIT and T_ON init
+
+------------------------------------------------------------------
+** insert switch entity
+** Default value of STEP of Kitt carr??
+------------------------------------------------------------------
+
+No need to sample on reset the switches since its done in every rising edge, could be useful
+to avoid waiting for one more cycle 
+
+** BIT_LENGTH ?? How does it changes if we change the LEDs used ??
+
+** Default value of STEP of Kitt carr??
+
+** MAYBE BETTER NOT DATAFLOW READ -- ** -- ** -- ** --

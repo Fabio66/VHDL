@@ -1,0 +1,25 @@
+GENERICS : 
+
+MS_COUNTER_RANGE is used to calculate how many clock cycles are needed to provide the desired step_time
+SW_COUNTER_RANGE is used to count internally 
+
+COUNTER_MINIMUM_STEP is exactly equal to MS_COUNTER RANGE, dunno what is supposed to dunno
+
+PWM PERIOD is the the period wanted for the PWM entities -> 1000000/CLKPERIOD = number of cycles needed to have a 1khz pwm, if we want a 
+ten khz pwm then we need to reduce this number (number of cycles that the blocks have to wait for a period) --> Normalization dividing with 
+PWM_FREQUENCY_KHZ
+
+TON_STEP_VALUE is simply the minimum TON for a given tail. PWM_PERIOD/TAIL_LENGTH... this will be multiplied to get the scaled Tons of other LEDS
+of the tail.
+
+SIGNALS : 
+
+tail_initialization is used to properly inject after reset/turn on of the device the TAIL in the registers.
+
+ms_counter is used to count how many cycles are passed since ms_counter = 0
+
+sw_counter is used to COUNTER_MINIMUM_STEP
+
+switches_value is used to read the binary value of the switch configuration to correctly asses the 'velocity' of the tail
+
+LED_ton is used to feed to each PWM entity the corresponding Ton.

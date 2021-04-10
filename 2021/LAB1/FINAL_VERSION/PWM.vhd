@@ -5,7 +5,7 @@ library IEEE;
 
 entity PWM is
 	Generic(						
-		BIT_LENGTH	:	INTEGER	RANGE	1 TO 16 := 8;	    -- Bit used  inside PWM. This value limits the lowest reacheable PWM frequency.
+		BIT_LENGTH	:	INTEGER	RANGE	1 TO 32 := 8;	    -- Bit used  inside PWM. This value limits the lowest reacheable PWM frequency.
 														    -- Assuming a target PWM frequency of 10KHz and a clk of 100MHz the Period value has to be 10_000.
 														    -- This can be reached with a 14 bit BIT_LENGHT. Using 16 bit BIT_LENGHT will provide more headroom.
 		
@@ -23,7 +23,7 @@ entity PWM is
 		--Period	:	IN	STD_LOGIC_VECTOR(BIT_LENGTH-1 downto 0);	-- clk per period of PWM, removed. No need to change Period in operation
 		------------------------------
         
-		LedDriver		:	OUT	 STD_LOGIC		                        -- PWM signal			
+		PWM		:	OUT	 STD_LOGIC		                        		-- PWM signal			
 	);
 end PWM;
 
@@ -49,7 +49,7 @@ architecture Behavioral of PWM is
 begin
 	
 	----------------------------- DATA FLOW ---------------------------
-	LedDriver		<= pwm_reg;
+	PWM		<= pwm_reg;
 
 	----------------------------- PROCESS -----------------------------
 	process(reset, clk)	
