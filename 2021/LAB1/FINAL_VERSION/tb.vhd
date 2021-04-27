@@ -13,8 +13,6 @@ architecture Behavioral of tb_kittpwm is
 	constant	HUMAN_PERIOD	:	TIME	:= 	20 ms;
 	constant	RESET_WND		:	TIME	:= 	100  ns;
 
-	constant 	BIT_LENGTH		:	INTEGER		RANGE	1 TO 32 	:= 32;
-
 	constant 	CLK_PERIOD_NS			:	POSITIVE	RANGE	1 TO 100     	:= 10;		
 	constant 	MIN_KITT_CAR_STEP_MS	:	POSITIVE	RANGE	1 TO 20000   	:= 1;	
 
@@ -23,10 +21,10 @@ architecture Behavioral of tb_kittpwm is
 	constant 	TAIL_LENGTH  	:   INTEGER := 4;
 
 	constant 	PWM_FREQUENCY_KHZ		:	POSITIVE 	RANGE	1   TO  100		:= 10;			             
+	constant 	PWM_INIT                :   STD_LOGIC   := '1';
 
 	component KITT_CARR_PWM is
 		Generic (
-			BIT_LENGTH				:	INTEGER		RANGE	1 TO 32 		:= 32;
 	
 			CLK_PERIOD_NS			:	POSITIVE	RANGE	1 TO 100     	:= 10;		-- clk period in nanoseconds
 			MIN_KITT_CAR_STEP_MS	:	POSITIVE	RANGE	1 TO 2000    	:= 1;		-- Minimum step period in milliseconds (i.e., value in milliseconds of Delta_t)
@@ -35,7 +33,9 @@ architecture Behavioral of tb_kittpwm is
 			NUM_OF_LEDS				:	INTEGER		RANGE	1 TO 16 		:= 16;		-- Number of output LEDs
 			TAIL_LENGTH				:	INTEGER		RANGE	1 TO 16			:= 4;		-- Tail length
 			
-			PWM_FREQUENCY_KHZ		:	POSITIVE 	RANGE	1 TO 100		:= 1		-- PWM frequency in KHz
+			PWM_FREQUENCY_KHZ		:	POSITIVE 	RANGE	1 TO 100		:= 1;		-- PWM frequency in KHz
+			PWM_INIT                :   STD_LOGIC   := '1'
+		
 		);
 		Port (
 			reset	    :	IN	STD_LOGIC;
@@ -59,7 +59,6 @@ begin
 
 	Dut_kit_car_pwm : KITT_CARR_PWM
 		generic map(
-			BIT_LENGTH					=> BIT_LENGTH,
 
 			CLK_PERIOD_NS			    => CLK_PERIOD_NS,
 			MIN_KITT_CAR_STEP_MS		=> MIN_KITT_CAR_STEP_MS,
@@ -68,7 +67,9 @@ begin
 			TAIL_LENGTH					=> TAIL_LENGTH,							
 			NUM_OF_LEDS					=> NUM_OF_LEDS,	
 		 			
-			PWM_FREQUENCY_KHZ		    => PWM_FREQUENCY_KHZ	
+			PWM_FREQUENCY_KHZ		    => PWM_FREQUENCY_KHZ,
+			PWM_INIT               		=> PWM_INIT
+
 		)
 		port map(
 			clk				=> clk,

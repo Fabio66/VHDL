@@ -7,7 +7,7 @@ entity PWM is
 	Generic(						
 		BIT_LENGTH	:	INTEGER	RANGE	1 TO 32 := 8;	    -- Bit used  inside PWM. This value limits the lowest reacheable PWM frequency.
 														    -- Assuming a target PWM frequency of 10KHz and a clk of 100MHz the Period value has to be 10_000.
-														    -- This can be reached with a 14 bit BIT_LENGHT. Using 16 bit BIT_LENGHT will provide more headroom.
+														    -- This can be reached with a 14 bit BIT_LENGHT. Using 32 bit BIT_LENGHT will provide more headroom.
 		
 		T_ON_INIT	:	INTEGER	      := 64;				-- Init of Ton
 		PERIOD_INIT	:	POSITIVE	  := 128;				-- Init of Period
@@ -33,7 +33,7 @@ architecture Behavioral of PWM is
 	
 	---------- INIT ------------
 	constant	T_ON_INIT_UNS	:	UNSIGNED(BIT_LENGTH-1 downto 0)	:= to_unsigned(T_ON_INIT-1, BIT_LENGTH);	
-	constant	PERIOD_INIT_UNS	:	UNSIGNED(BIT_LENGTH-1 downto 0) := to_unsigned(PERIOD_INIT -1, BIT_LENGTH);	
+	constant	PERIOD_INIT_UNS	:	UNSIGNED(BIT_LENGTH-1 downto 0) := to_unsigned(PERIOD_INIT-1, BIT_LENGTH);	
 
 	---------------------------- SIGNALS ----------------------------
 
@@ -82,7 +82,7 @@ begin
 			end if;
 			
 			if Ton_reg > Period_reg then			-- if duty cycle = 1
-				pwm_reg	<= PWM_INIT;
+			 	pwm_reg	<= PWM_INIT;
 			end if;					
 		end if;
 	end process;
