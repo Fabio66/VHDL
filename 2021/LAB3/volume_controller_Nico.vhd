@@ -10,7 +10,7 @@ entity volume_controller is
 
 		VOLUME_0DB   	: positive := 7;		--Volume central value (no amplitude increase nor decrease)
 		VOLUME_MAX		: positive := 15; 	    --Maximum volume value
-		VOLUME_MIN 		: positive := 0 	    --Minimum volume value
+		VOLUME_MIN 		: integer  := 0 	    --Minimum volume value
 	);
 	Port (
 		aclk			: in 	std_logic;
@@ -88,7 +88,7 @@ begin
 						--tdata_int <= s_axis_tdata;
 						tlast_int <= s_axis_tlast;
 						current_volume_int <= current_volume;		            --Sample the volume level
-                        amplified_data := signed(s_axis_tdata);		--Convert to integer the input data
+                        amplified_data := (VOLUME_MAX-VOLUME_0DB-1 downto 0 => s_axis_tdata(s_axis_tdata'high)) & (signed(s_axis_tdata));		--Convert to integer the input data
 					end if;
 
 				when COMPUTE =>		
@@ -117,14 +117,14 @@ begin
                     end if;
 
 					if (amplified_data > data_max) then
-						amplified_data := data_max;		--Clamp data to maximum positive value in 16bit signed if higher than it			
+						m_axis_tdata    <=  std_logic_vector(data_max);		--Clamp data to maximum positive value in 16bit signed if higher than it			
                     elsif (amplified_data < data_min) then			
-                        amplified_data := data_min; 	--Clamp data to minimum negative value in 16bit signed if lower than it				
+                        m_axis_tdata    <=  std_logic_vector(data_min); 	--Clamp data to minimum negative value in 16bit signed if lower than it				
+                    else
+                        --Move the computed value to output converting it in std_logic_vector
+					    m_axis_tdata     <= std_logic_vector(amplified_data(WORD_BIT-1 downto 0)); 
                     end if;
-
-                    --Move the computed value to output converting it in std_logic_vector
-					m_axis_tdata <= std_logic_vector(amplified_data(WORD_BIT-1 downto 0)); 
-
+                    
 				when SEND =>		
 					if m_axis_tready = '1' then		    --Move to RECEIVE state when the next AXIS module has received the data
 						state <= RECEIVE;
