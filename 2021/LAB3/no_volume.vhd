@@ -42,6 +42,7 @@ architecture Behavioral of no_vol_dx_sx is
 
 begin
 
+    reset <= not aresetn;
 
     with STATE select s_axis_tready <=
         '0' when IDLE,
